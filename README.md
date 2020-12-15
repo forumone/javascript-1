@@ -1,15 +1,12 @@
-# ForumOne TypeScript/JavaScript Style Guide
+# Forum One TypeScript/JavaScript Style Guide
 
 *A reasonably fashionable approach to JavaScript*
 
 > **Note**: this guide assumes you are using [Babel](https://babeljs.io), and requires that you use [babel-preset-airbnb](https://npmjs.com/babel-preset-airbnb) or the equivalent. It also assumes you are installing shims/polyfills in your app, with [airbnb-browser-shims](https://npmjs.com/airbnb-browser-shims) or the equivalent.
 
 Other Style Guides
-  - [ES5 (Deprecated)](https://github.com/airbnb/javascript/tree/es5-deprecated/es5)
   - [React](react/)
   - [CSS-in-JavaScript](css-in-javascript/)
-  - [CSS & Sass](https://github.com/airbnb/css)
-  - [Ruby](https://github.com/airbnb/ruby)
 
 ## Table of Contents
 
@@ -4196,7 +4193,7 @@ Other Style Guides
 
 (The MIT License)
 
-Copyright (c) 2012 Airbnb
+Copyright (c) 2012 Forum One
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
