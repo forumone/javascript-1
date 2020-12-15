@@ -1,17 +1,10 @@
-# Airbnb JavaScript Style Guide() {
+# ForumOne TypeScript/JavaScript Style Guide
 
-*A mostly reasonable approach to JavaScript*
+*A reasonably fashionable approach to JavaScript*
 
 > **Note**: this guide assumes you are using [Babel](https://babeljs.io), and requires that you use [babel-preset-airbnb](https://npmjs.com/babel-preset-airbnb) or the equivalent. It also assumes you are installing shims/polyfills in your app, with [airbnb-browser-shims](https://npmjs.com/airbnb-browser-shims) or the equivalent.
 
-[![Downloads](https://img.shields.io/npm/dm/eslint-config-airbnb.svg)](https://www.npmjs.com/package/eslint-config-airbnb)
-[![Downloads](https://img.shields.io/npm/dm/eslint-config-airbnb-base.svg)](https://www.npmjs.com/package/eslint-config-airbnb-base)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/airbnb/javascript?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-
-This guide is available in other languages too. See [Translation](#translation)
-
 Other Style Guides
-
   - [ES5 (Deprecated)](https://github.com/airbnb/javascript/tree/es5-deprecated/es5)
   - [React](react/)
   - [CSS-in-JavaScript](css-in-javascript/)
@@ -20,7 +13,9 @@ Other Style Guides
 
 ## Table of Contents
 
+  1. [Tools](#tools)
   1. [Types](#types)
+  1. [Advanced Types](#advanced-types)
   1. [References](#references)
   1. [Objects](#objects)
   1. [Arrays](#arrays)
@@ -60,49 +55,220 @@ Other Style Guides
   1. [License](#license)
   1. [Amendments](#amendments)
 
+## Tools 
+
+- [TypeScript](http://www.typescriptlang.org/). Having a type checker watch your code and give you feedback in real time will catch more errors and typos than you think it could at first.
+- [ESLint](https://eslint.org/). Plugins are available most editors out there, including [VS Code](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) and [JetBrains-powered IDEs](https://plugins.jetbrains.com/plugin/7494-eslint) (like PHPStorm and WebStorm).
+- [Prettier](https://prettier.io/). Install a [plugin](https://prettier.io/docs/en/editors.html) for your favorite editor, and stop worrying about formatting.
+
 ## Types
 
-  <a name="types--primitives"></a><a name="1.1"></a>
-  - [1.1](#types--primitives) **Primitives**: When you access a primitive type you work directly on its value.
+- **Primitive Types:** TypeScript recognizes the same primitive types that JavaScript does.
 
-    - `string`
-    - `number`
-    - `boolean`
-    - `null`
-    - `undefined`
-    - `symbol`
-    - `bigint`
+  - `number`
+  - `string`
+  - `boolean`
+  - `undefined`
+  - `null`
+  - `symbol` (target: ES2015 and above)
+  - `bigint` (target: ESNext and above)
 
-    ```javascript
-    const foo = 1;
-    let bar = foo;
+  Neither symbols nor bigints can be polyfilled, so don't use them in browsers.
 
-    bar = 9;
+- **Reference Types:** TypeScript recognizes complex reference types that represent compound data or encapsulated behavior.
 
-    console.log(foo, bar); // => 1, 9
-    ```
+  - Function types: `() => number`, `(foo: number) => Promise<string>`
+  - Array types: `string[]`, `readonly number[]`, `Array<number | string>`
+  - Object types: `{ required: number }`, `{ optional?: boolean }`
 
-    - Symbols and BigInts cannot be faithfully polyfilled, so they should not be used when targeting browsers/environments that don’t support them natively.
+- **Dynamic Types:** TypeScript adds some additional types that reflect JavaScript's dynamic nature: `unknown` and `any`. Be sure to use `unknown` instead of `any`.
+  [tsconfig: [noImplicitAny](https://github.com/microsoft/TypeScript-Handbook/blob/master/pages/Compiler%20Options.md#compiler-options)]
+  [ESLint: [@typescript-eslint/no-explicit-any](https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-explicit-any.md)]
 
-  <a name="types--complex"></a><a name="1.2"></a>
-  - [1.2](#types--complex)  **Complex**: When you access a complex type you work on a reference to its value.
+  :question: Why? The `any` type effectively disables type checking for that variable, making it possible to accidentally cause runtime crashes.
 
-    - `object`
-    - `array`
-    - `function`
+  ```ts
+  const bad: any = 42;
 
-    ```javascript
-    const foo = [1, 2];
-    const bar = foo;
+  // Bad: runtime crash
+  console.log(bad.toUpperCase()); // TypeError: bad.toUpperCase is not a function
 
-    bar[0] = 9;
+  // What we wanted: a runtime check before using the value
+  if (typeof bad === 'string') {
+    console.log(bad.toUpperCase());
+  }
 
-    console.log(foo[0], bar[0]); // => 9, 9
-    ```
+  const good: unknown = 42;
+
+  // Typecheck error: `good' is unknown
+  console.log(good.toUpperCase());
+
+  if (typeof good === 'string') {
+    // The compiler knows that `good' is a string here, so this is safe
+    console.log(good.toUpperCase());
+  }
+  ```
+
+- **Null Checks:** Be sure to check for `null` and `undefined`.
+  [tsconfig: [strictNullChecks](https://github.com/microsoft/TypeScript-Handbook/blob/master/pages/Compiler%20Options.md#compiler-options)]
+
+  ```ts
+  // Can be called as logNumber(number) or logNumber()
+  function logNumber(optionalParam?: number) {
+    if (optionalParam !== undefined) {
+      console.log(optionalParam.toFixed(2));
+    }
+  }
+
+  // Prints a value
+  logNumber(42); // Logs 42.00
+
+  // Logs nothing, but doesn't crash: the `undefined' check saves us from a TypeError
+  logNumber();
+  ```
+
+- **Naming:** Types should always be named in PascalCase.
+  [Wikipedia: [Letter case](https://en.wikipedia.org/wiki/Letter_case#Special_case_styles)]
+
+  ```ts
+  interface noGood {}
+
+  type noGood = () => number;
+
+  interface Good {}
+
+  type AlsoGood = () => number;
+  ```
+
+- **Assertions:** Use the `as` syntax for type assertions.
+  [ESLint: [@typescript-eslint/consistent-type-assertions](https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-assertions.md)]
+
+  :question: Why? The `<T>` syntax doesn't work in `.tsx` files, but `as` does - let's be consistent.
+
+  ```ts
+  const bad = <Bad>foo;
+
+  const good = foo as Good;
+  ```
 
 **[⬆ back to top](#table-of-contents)**
 
-## References
+## Advanced Types
+
+- **Aliases for Functions:** Use arrow syntax for aliases to function types. If you also need to give a type to a property of that function, switch to an interface.
+
+  :question: Why? The arrow syntax makes it more visually apparent you're identifying a function type.
+
+  ```ts
+  // Bad
+  type BadCallback = {
+    (signal: number): void;
+  };
+
+  // Good
+  type Callback = (signal: number) => void;
+
+  // Also good: we can't add properties using the simpler arrow syntax
+  interface MockFunction {
+    (...args: unknown[]): unknown;
+
+    clear(): void;
+    calls(): string[];
+    original(): (...args: unknown[]) => unknown;
+  }
+  ```
+
+- **Aliases for Objects:** Don't use the `type` keyword to define object types. Use interfaces instead.
+  [ESLint: [@typescript-eslint/consistent-type-definition](https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-definitions.md)]
+
+  :question: Why? You're not defining a new type, you're defining an _alias_ to a type - the compiler will resolve the alias in your editor, which eliminates the whole point of giving the type a name.
+
+  When to ignore this advice: When you need to use a [mapped type](https://www.typescriptlang.org/docs/handbook/advanced-types.html#mapped-types).
+
+  ```ts
+  // Bad: this should be an interface.
+  type BadPoint = {
+    x: number;
+    y: number;
+  };
+
+  // Has type { x: number, y: number }, *not* BadPoint
+  const bad: BadPoint = { x: 1, y: 2 };
+
+  // Technically okay: mapped types aren't supported in interface declarations
+  type PointKeys = 'x' | 'y';
+  type OkayPoint = { [Key in PointKeys]: number };
+
+  // Has type { x: number, y: number }, *not* OkayPoint
+  const mapped: OkayPoint = { x: 1, y: 2 };
+
+  // Good: the humble `interface' does its job well
+  interface GoodPoint {
+    x: number;
+    y: number;
+  }
+
+  // Has type GoodPoint, *not* { x: number, y: number }
+  const good: GoodPoint = { x: 1, y: 2 };
+  ```
+
+- **Unions for Widening:** Unions are a safe way of allowing different types as parameters.
+
+  ```ts
+  function concatenate(strings: string | string[]): string {
+    if (typeof strings === 'string') {
+      return strings;
+    }
+
+    return strings.join('');
+  }
+
+  concatenate('one string'); // => 'one string'
+  concatenate(['many', ' ', 'strings']); // => 'many strings'
+  ```
+
+- **Unions as Enumerations:** When combined with literal types, unions are a good way to limit a type to known values.
+
+  ```ts
+  type Mode = 'readonly' | 'readwrite';
+
+  function createFile(path: string, mode: Mode) {
+    // ...
+  }
+
+  // Good: these strings are allowed by the Mode type
+  createFile('secrets.txt', 'readonly');
+  createFile('notes.txt', 'readwrite');
+
+  // Typecheck failure: 'immutable' isn't a valid Mode
+  createFile('error.txt', 'immutable');
+  ```
+
+- **Intersections:** Instead of intersections, use the `extends` clause of an interface.
+  [Handbook: [Intersection Types](http://www.typescriptlang.org/docs/handbook/advanced-types.html#intersection-types)]
+
+  :question: Why? TypeScript computes intersections recursively, leading to unexpected behavior. Interface extension will catch more conflicts between types.
+
+  ```ts
+  interface Foo {
+    value: number;
+  }
+
+  interface Bar {
+    value: string;
+  }
+
+  // Bad: the property `value` has type number & string, which is impossible
+  type Bad = Foo & Bar;
+
+  // Typecheck failure: the compiler notices that the `value' properties are incompatible
+  // and prevents this
+  interface Good extends Foo, Bar {}
+  ```
+
+**[⬆ back to top](#table-of-contents)**
+
+## Variable Assignment
 
   <a name="references--prefer-const"></a><a name="2.1"></a>
   - [2.1](#references--prefer-const) Use `const` for all of your references; avoid using `var`. eslint: [`prefer-const`](https://eslint.org/docs/rules/prefer-const.html), [`no-const-assign`](https://eslint.org/docs/rules/no-const-assign.html)
@@ -489,6 +655,76 @@ Other Style Guides
       2,
     ];
     ```
+
+### Typing
+
+- **Types:** Prefer using `T[]` or `readonly T[]` when `T` is a simple type name; `Array<T>` or `Readonly<T>` for everything else.
+  [ESLint: [@typescript-eslint/array-type](https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/array-type.md)]
+
+  :question: Why? When you use a complex type with the `T[]` syntax, you must parenthesize it, adding to visual clutter.
+
+  ```ts
+  // Good: type names
+  type SimpleArray = string[];
+  type SimpleReadonlyArray = readonly string[];
+
+  // Good: arrays of type expressions
+  type ComplexArray = Array<number | string>;
+  type ComplexReadonlyArray = ReadonlyArray<number | string>;
+
+  // Bad: the `[]` suffix gets lost in the visual noise
+  type BadCallbacks = readonly ((param: string) => void)[];
+
+  // Good: much more readable
+  type Callbacks = ReadonlyArray<(param: string) => void>;
+  ```
+
+- **`any[]`:** When you declare an empty array, TypeScript sometimes infers that it's an array of `any`. Use an explicit type annotation here.
+
+  :question: Why? Usage of `any` effectively disables the type checker, allowing more bugs to slip through to production.
+
+  ```ts
+  // Bad: TypeScript guesses any[] here
+  const bad = [];
+  bad.push(42);
+
+  // Bug? Or intentional?
+  bad.push('hmm');
+
+  // Good: explicit type
+  const good: number[] = [];
+  good.push(42);
+
+  // Typecheck failure: with more information, TypeScript caught this bug
+  good.push('oops');
+
+  // Good: intentionally allow both numbers and strings
+  const intentional: Array<number | string> = [];
+  intentional.push(42);
+  intentional.push('good');
+
+  // Good: TypeScript infers number[] from the array's contents
+  const nonEmpty = [42];
+
+  // Acceptable: TypeScript infers Array<number | string> from the array's contents
+  const alsoNonEmpty = [42, 'hooray'];
+  ```
+
+- **Mutability:** Prefer using read-only arrays as function arguments and object properties.
+
+  :question: Why? Arrays are reference types, so they're shared instead of copied.
+
+  ```ts
+  // Bad: doesn't actually modify `values'
+  function badSum(values: number[]): number {
+    return values.reduce((acc, value) => acc + value, 0);
+  }
+
+  // Good: type indicates it won't modify `values'
+  function goodSum(values: readonly number[]): number {
+    return values.reduce((acc, value) => acc + value, 0);
+  }
+  ```
 
 **[⬆ back to top](#table-of-contents)**
 
@@ -924,6 +1160,142 @@ Other Style Guides
     );
     ```
 
+### Typing
+
+**Return Types:** Ensure your function has a declared return type.
+  [ESLint: [@typescript-eslint/explicit-function-return-type](https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-function-return-type.md)]
+
+  :question: Why? TypeScript's return type inference has some holes: it can't infer recursive functions, and will not stop you if you forget a `return` in a branch.
+
+  ```ts
+  // Bad: TypeScript infers `number | undefined' here
+  function bad() {
+    if (Math.random() < 0.5) {
+      return 42;
+    }
+  }
+
+  // Bad: TypeScript gives up inferring this type
+  function alsoBad() {
+    if (Math.random() < 0.5) {
+      return alsoBad();
+    }
+
+    return 42;
+  }
+
+  // Good: TypeScript can ensure you're returning a number from every branch
+  function good(): number {
+    if (Math.random() < 0.5) {
+      return 42;
+    }
+
+    return 9;
+  }
+
+  // Good: the explicit type means we meant to sometimes return `undefined'
+  function alsoGood(): number | undefined {
+    if (Math.random() < 0.5) {
+      return 42;
+    }
+
+    // Remember: if a function reaches the end without a return, it implicitly returns
+    // 'undefined'
+  }
+
+  // Also good: this is checked in the same way that function declarations are
+  type Adder = (value: number) => number;
+  const adder: Adder = x => x + 1;
+  ```
+
+- **Callbacks:** As an exception, it's okay to omit types when writing callbacks. TypeScript can fill in the blanks for you.
+
+  ```ts
+  const numbers = [1, 2, 3];
+
+  // No need for (n: number): number => ... here, but...
+  const squares = numbers.map(n => n ** 2);
+
+  // ... it's needed here since the callback has no context.
+  const square = (n: number): number => n ** 2;
+  const moreSquares = numbers.map(square);
+  ```
+
+- **Optional Arguments:** Arguments can be declared optional with the `?` marker. An optional argument implicitly has `undefined` added to its type.
+
+  ```ts
+  function bad(value?: number) {
+    // Typecheck failure: `value' may be undefined
+    console.log(value.toFixed(2));
+  }
+
+  function good(value?: number) {
+    if (value !== undefined) {
+      console.log(value.toFixed(2));
+    }
+  }
+  ```
+
+- **Default Arguments:** Default arguments do not use the optional marker, but otherwise behave the same way.
+
+  ```ts
+  function optional(value = 42) {
+    console.log(value.toFixed(2));
+  }
+  ```
+
+- **Variable Arguments:** If your function accepts an unknown number of arguments, use a rest param. TypeScript doesn't type-check the special `arguments` variable.
+
+  ```ts
+  function badSum(): number {
+    let sum = 0;
+
+    for (const arg of arguments) {
+      sum += arg;
+    }
+
+    return sum;
+  }
+
+  // Typecheck failure: TypeScript thinks `badSum' doesn't take arguments
+  badSum(1, 2, 3);
+
+  function goodSum(...values: readonly number[]): number {
+    return values.reduce((acc, value) => acc + value, 0);
+  }
+
+  goodSum(1, 2, 3); // => 6
+  ```
+
+- **When to Return:** Return early, return often. Returning after a precondition check eliminates some indentation drift, and TypeScript can use the control flow information to narrow types down.
+
+  ```ts
+  function badDivide(a: number, b: number): number {
+    if (b === 0) {
+      throw new Error('negative divisor');
+    } else {
+      return a / b;
+    }
+  }
+
+  function goodDivide(a: number, b: number): number {
+    if (b === 0) {
+      throw new Error('negative divisor');
+    }
+
+    return a / b;
+  }
+
+  function typeNarrowing(values: string | string[]): string {
+    if (typeof values === 'string') {
+      return values;
+    }
+
+    // TypeScript knows we have a `string[]' here and won't require any more checks
+    return values.join(' ');
+  }
+  ```
+
 **[⬆ back to top](#table-of-contents)**
 
 ## Arrow Functions
@@ -1147,8 +1519,19 @@ Other Style Guides
     }
     ```
 
-  <a name="constructors--chaining"></a><a name="9.3"></a>
-  - [9.3](#constructors--chaining) Methods can return `this` to help with method chaining.
+  <a name="constructors--naming"></a><a name="9.3"></a>
+  - [9.3](#constructors--naming) Classes should always be named in PascalCase.
+
+    ```ts
+    class badIdea {}
+    class please_dont {}
+
+    class GoodIdea {}
+    class PleaseDo {}
+    ```
+
+  <a name="constructors--chaining"></a><a name="9.4"></a>
+  - [9.4](#constructors--chaining) Methods can return `this` to help with method chaining.
 
     ```javascript
     // bad
@@ -1184,8 +1567,8 @@ Other Style Guides
       .setHeight(20);
     ```
 
-  <a name="constructors--tostring"></a><a name="9.4"></a>
-  - [9.4](#constructors--tostring) It’s okay to write a custom `toString()` method, just make sure it works successfully and causes no side effects.
+  <a name="constructors--tostring"></a><a name="9.5"></a>
+  - [9.5](#constructors--tostring) It’s okay to write a custom `toString()` method, just make sure it works successfully and causes no side effects.
 
     ```javascript
     class Jedi {
@@ -1203,8 +1586,8 @@ Other Style Guides
     }
     ```
 
-  <a name="constructors--no-useless"></a><a name="9.5"></a>
-  - [9.5](#constructors--no-useless) Classes have a default constructor if one is not specified. An empty constructor function or one that just delegates to a parent class is unnecessary. eslint: [`no-useless-constructor`](https://eslint.org/docs/rules/no-useless-constructor)
+  <a name="constructors--no-useless"></a><a name="9.6"></a>
+  - [9.6](#constructors--no-useless) Classes have a default constructor if one is not specified. An empty constructor function or one that just delegates to a parent class is unnecessary. eslint: [`no-useless-constructor`](https://eslint.org/docs/rules/no-useless-constructor)
 
     ```javascript
     // bad
@@ -1233,7 +1616,7 @@ Other Style Guides
     ```
 
   <a name="classes--no-duplicate-members"></a>
-  - [9.6](#classes--no-duplicate-members) Avoid duplicate class members. eslint: [`no-dupe-class-members`](https://eslint.org/docs/rules/no-dupe-class-members)
+  - [9.7](#classes--no-duplicate-members) Avoid duplicate class members. eslint: [`no-dupe-class-members`](https://eslint.org/docs/rules/no-dupe-class-members)
 
     > Why? Duplicate class member declarations will silently prefer the last one - having duplicates is almost certainly a bug.
 
@@ -1287,6 +1670,80 @@ Other Style Guides
       }
     }
     ```
+
+### Visibility
+
+ TypeScript recognizes three visibility levels. These limit the ability of other parts of the code to interact with a class' methods and properties.
+
+  - `public`: Anyone can see and use
+  - `protected`: Only this class and its descendants can see and use
+  - `private`: No one but this class can see and use
+
+- **Public:** The keyword `public` is implied by default and can be left off for conciseness.
+
+  ```ts
+  class Foo {
+    public bad(): string {
+      return 'verbose';
+    }
+
+    good(): string {
+      return 'concise';
+    }
+  }
+  ```
+
+- **Private:** Methods and properties that are implementation details should be marked `private`.
+
+  :question: Why? TypeScript checks private methods and properties for usage and will flag code that can be safely removed.
+
+  ```ts
+  class Foo {
+    getValues(): number {
+      return 42;
+    }
+
+    // This method is unused and can be removed
+    private handleSomeEvent(): void {}
+  }
+  ```
+
+- **Protected:** Generally, object inheritance isn't all it's cracked up to be. However, if you are using inheritance, protected methods and properties can be used as a well-controlled means of sharing code.
+
+- **Mutability:** Like interfaces, class properties can be marked `readonly`. Use this for properties that either won't change or shouldn't change.
+  [ESLint: [@typescript-eslint/prefer-readonly](https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-readonly.md)]
+
+  ```ts
+  // Bad: are we going to create new maps?
+  class Bad {
+    private items: ReadonlyMap<string, string>;
+  }
+
+  // Good: 'items' is mutated in a method
+  class Mutable {
+    private items: ReadonlyMap<string, string>;
+
+    replaceItems(items: ReadonlyMap<string, string>): void {
+      this.items = items;
+    }
+  }
+
+  // Good: 'items' is not mutated by the class and is explicitly marked readonly
+  class Immutable {
+    private readonly items: ReadonlyMap<string, string>;
+  }
+  ```
+
+- **Types:** When you declare a class, you also declare an interface that represents instances of that class. If you need to refer to the type of the class itself, use `typeof ClassName`.
+
+  ```ts
+  class Example {}
+
+  const foo: Example = new Example();
+
+  const AlsoExample: typeof Example = Example;
+  ```
+
 
 **[⬆ back to top](#table-of-contents)**
 
@@ -4003,4 +4460,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 We encourage you to fork this guide and change the rules to fit your team’s style guide. Below, you may list some amendments to the style guide. This allows you to periodically update your style guide without having to deal with merge conflicts.
 
-# };
